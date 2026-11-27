@@ -22,6 +22,15 @@ const storePinOptions: { id: string; name: string; pin: string }[] = [
   { id: ADMIN_STORE_ID, name: ADMIN_STORE_NAME, pin: '9999' },
 ]
 
+// Mirrors the customer-facing order stepper in src/app/orders/page.tsx.
+const STATUS_STEPS: { key: OrderStatus; label: string }[] = [
+  { key: 'received', label: 'Received' },
+  { key: 'accepted', label: 'Accepted' },
+  { key: 'packed', label: 'Packed' },
+  { key: 'out-for-delivery', label: 'On the Way' },
+  { key: 'delivered', label: 'Delivered' },
+]
+
 function PinGate({ onUnlock }: { onUnlock: (storeId: string) => void }) {
   const [selectedStoreId, setSelectedStoreId] = useState<string>('')
   const [pin, setPin] = useState<string>('')
@@ -188,29 +197,71 @@ function MerchantContent({
         <p className="text-sm text-slate-500">Incoming orders</p>
       </header>
 
-      {/* Status filter chips */}
+      {/* Status filter dot-stepper bar */}
       <div className="mb-4">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-          {(['all', 'received', 'accepted', 'packed', 'out-for-delivery', 'delivered'] as const).map((status) => {
-            const active = statusFilter === status
-            const ordersCount = status === 'all'
-              ? orders.length
-              : orders.filter((o) => o.status.toLowerCase() === status).length
-            const label = status === 'all' ? 'All' : statusLabels[status]
-            return (
-              <button
-                key={status}
-                type="button"
-                onClick={() => router.push(status === 'all' ? '/merchant' : `?status=${status}`)}
-                className={`
-                  shrink-0 px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-medium transition
-                  ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'text-slate-600 border-transparent'}
-                `}
-              >
-                {label} ({ordersCount})
-              </button>
-            )
-          })}
+        <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              Filter by Status
+            </span>
+            <button
+              type="button"
+              onClick={() => router.push('/merchant')}
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition ${
+                statusFilter === 'all'
+                  ? 'bg-[#0C831F] text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All ({orders.length})
+            </button>
+          </div>
+
+          <div className="grid grid-cols-5 gap-1 items-start w-full relative pt-1">
+            {/* Connecting track behind the circles */}
+            {STATUS_STEPS.slice(0, -1).map((_, i) => (
+              <span
+                key={`stepper-track-${i}`}
+                aria-hidden="true"
+                className="absolute top-3 -z-10 h-[1px] bg-slate-200"
+                style={{
+                  left: `${i * 20 + 10}%`,
+                  right: `${100 - ((i + 1) * 20 + 10)}%`,
+                }}
+              />
+            ))}
+            {STATUS_STEPS.map((step) => {
+              const active = statusFilter === step.key
+              const count = orders.filter((o) => normalizeStatus(o.status) === step.key).length
+              return (
+                <button
+                  key={step.key}
+                  type="button"
+                  onClick={() =>
+                    router.push(active ? '/merchant' : `?status=${step.key}`)
+                  }
+                  className="flex flex-col items-center text-center min-w-0 relative z-10 group"
+                >
+                  <span
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-all ${
+                      active
+                        ? 'bg-[#0C831F] text-white ring-4 ring-[#0C831F]/20'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200 group-hover:border-[#0C831F]'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                  <span
+                    className={`text-[10px] leading-tight mt-1.5 break-words ${
+                      active ? 'font-semibold text-[#0C831F]' : 'font-medium text-slate-500'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
