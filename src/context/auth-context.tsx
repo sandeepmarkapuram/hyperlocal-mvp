@@ -15,6 +15,7 @@ interface AuthContextValue {
   user: User | null
   profile: Profile | null
   loading: boolean
+  refreshProfile: () => Promise<void>
   signUp: (input: {
     email: string
     password: string
@@ -43,6 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(data)
     } else {
       setProfile(null)
+    }
+  }
+
+  // Re-fetch the logged-in user's profile row (e.g. after an upsert).
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id)
     }
   }
 
@@ -145,7 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user, profile, loading, refreshProfile, signUp, signIn, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   )

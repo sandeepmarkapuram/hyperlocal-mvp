@@ -8,7 +8,13 @@ export function NavBar() {
   const pathname = usePathname()
   const isMerchant = pathname === '/merchant'
   const { user, profile, signOut } = useAuth()
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'Customer'
+  const displayName =
+    profile?.full_name?.trim().split(/\s+/)[0] ||
+    (typeof user?.user_metadata?.full_name === 'string'
+      ? user.user_metadata.full_name.trim().split(/\s+/)[0]
+      : '') ||
+    user?.email?.split('@')[0] ||
+    ''
 
   return (
     <nav className="w-full max-w-[480px] mx-auto bg-white border-b border-slate-100 sticky top-0 z-30">
@@ -26,8 +32,8 @@ export function NavBar() {
           </Link>
         ) : user ? (
           <>
-            <span className="shrink-0 text-xs font-medium text-slate-500">
-              {firstName}
+            <span className="shrink-0 text-xs font-medium text-slate-500 truncate max-w-[110px]">
+              Hi, {displayName}
             </span>
             <Link
               href="/orders"

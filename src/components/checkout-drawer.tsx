@@ -5,14 +5,23 @@ import { useState, useEffect } from "react"
 import { useCart } from "@/context/cart-context"
 import { useOrders } from "@/context/order-context"
 import { useAuth } from "@/context/auth-context"
+import { supabase } from "@/lib/supabase"
 import { findStore } from "@/data/mockData"
 import type { CartItem } from "@/data/mockData"
+
+interface CustomerInfo {
+  name: string
+  phone: string
+  address: string
+}
+
+const CUSTOMER_INFO_KEY = 'hyperlocal_customer_info'
 
 export function CheckoutDrawer({ onClose, isOpen }: { onClose: () => void; isOpen: boolean }) {
   const router = useRouter()
   const { clear, items, count, total, activeStoreId } = useCart()
   const { placeOrder } = useOrders()
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const [name, setName] = useState(profile?.full_name ?? "")
   const [phone, setPhone] = useState(profile?.phone ?? "")
   const [address, setAddress] = useState(profile?.address ?? "RR Nagar, Bengaluru")
@@ -26,6 +35,7 @@ export function CheckoutDrawer({ onClose, isOpen }: { onClose: () => void; isOpe
 
   const handlePlaceOrder = async () => {
     if (!name.trim() || !formattedPhone.trim()) return
+    setSubmitting(true)
     const store = activeStoreId ? findStore(activeStoreId) : null
     const order = {
       id: "ORD-" + Date.now(),
@@ -44,6 +54,23 @@ export function CheckoutDrawer({ onClose, isOpen }: { onClose: () => void; isOpe
     clear()
     router.push("/")
     setShowSuccess(true)
+
+    // Persist customer details so they are pre-filled by default on the next order.
+    localStorage.setItem(
+      CUSTOMER_INFO_KEY,
+      JSON.stringify({ name, phone, address })
+    )
+
+    // Keep the logged-in user's profile in sync across devices.
+    if (user) {
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({ id: user.id, full_name: name, phone, address })
+      if (!upsertError) {
+        await refreshProfile()
+      }
+    }
+
     placeOrder(order)
     setSubmitting(false)
   }
@@ -54,6 +81,30 @@ export function CheckoutDrawer({ onClose, isOpen }: { onClose: () => void; isOpe
       return () => clearTimeout(timer)
     }
   }, [showSuccess, onClose])
+
+  // (Re)populate customer details from the profile, falling back to saved
+  // localStorage values, whenever the drawer opens (including on re-open after
+  // placing an order and across page reloads).
+  useEffect(() => {
+    if (!isOpen) return
+    if (profile) {
+      setName(profile.full_name)
+      setPhone(profile.phone)
+      setAddress(profile.address)
+      return
+    }
+    let parsed: CustomerInfo | null = null
+    try {
+      parsed = JSON.parse(localStorage.getItem(CUSTOMER_INFO_KEY) ?? "null")
+    } catch {
+      parsed = null
+    }
+    if (parsed) {
+      setName(parsed.name)
+      setPhone(parsed.phone)
+      setAddress(parsed.address)
+    }
+  }, [isOpen, profile])
 
   if (!isOpen) return null
 
