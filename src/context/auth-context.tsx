@@ -34,14 +34,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = async (id: string) => {
+  const fetchProfile = async (user: User) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single()
-    if (!error && data) {
+      .select('id, full_name, phone, address')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (error) {
+      setProfile(null)
+      return
+    }
+    if (data) {
       setProfile(data)
+      return
+    }
+
+    // No profiles row yet: backfill from auth user metadata or the locally
+    // saved checkout info, then create the row so existing users immediately
+    // get a profiles record.
+    const metadataFullName =
+      typeof user.user_metadata?.full_name === 'string'
+        ? user.user_metadata.full_name
+        : null
+
+    let fullName = metadataFullName
+    let phone = ''
+    let address = ''
+
+    if (!fullName) {
+      let saved:
+        | { name?: string; phone?: string; address?: string }
+        | null = null
+      try {
+        saved = JSON.parse(
+          localStorage.getItem('hyperlocal_customer_info') ?? 'null',
+        )
+      } catch {
+        saved = null
+      }
+      if (saved?.name) {
+        fullName = saved.name
+        phone = saved.phone ?? ''
+        address = saved.address ?? ''
+      }
+    }
+
+    if (fullName) {
+      const profileRow: Profile = {
+        id: user.id,
+        full_name: fullName,
+        phone,
+        address,
+      }
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(profileRow)
+      if (upsertError) {
+        setProfile(null)
+      } else {
+        setProfile(profileRow)
+      }
     } else {
       setProfile(null)
     }
@@ -50,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Re-fetch the logged-in user's profile row (e.g. after an upsert).
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id)
+      await fetchProfile(user)
     }
   }
 
@@ -63,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const sessionUser = data.session?.user ?? null
       setUser(sessionUser)
       if (sessionUser) {
-        await fetchProfile(sessionUser.id)
+        await fetchProfile(sessionUser)
       } else {
         setProfile(null)
       }
@@ -84,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const sessionUser = session?.user ?? null
         setUser(sessionUser)
         if (sessionUser) {
-          await fetchProfile(sessionUser.id)
+          await fetchProfile(sessionUser)
         } else {
           setProfile(null)
         }
@@ -109,7 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phone: string
     address: string
   }) => {
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName, phone, address },
+      },
+    })
     if (error) {
       throw new Error(error.message)
     }
