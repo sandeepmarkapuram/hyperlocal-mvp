@@ -43,6 +43,8 @@ export interface Order {
   total: number;
   status: OrderStatus;
   createdAt: string;
+  // Supabase auth user who placed the order (undefined for guest orders).
+  userId?: string;
 }
 
 export interface CartItem {

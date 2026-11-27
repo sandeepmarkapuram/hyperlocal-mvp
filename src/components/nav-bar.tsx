@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/context/auth-context'
 
 export function NavBar() {
   const pathname = usePathname()
   const isMerchant = pathname === '/merchant'
+  const { user, profile, signOut } = useAuth()
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'Customer'
 
   return (
     <nav className="w-full max-w-[480px] mx-auto bg-white border-b border-slate-100 sticky top-0 z-30">
@@ -21,13 +24,39 @@ export function NavBar() {
           >
             ← Back to Store
           </Link>
+        ) : user ? (
+          <>
+            <span className="shrink-0 text-xs font-medium text-slate-500">
+              {firstName}
+            </span>
+            <Link
+              href="/orders"
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-800 hover:bg-slate-200"
+            >
+              My Orders
+            </Link>
+            <button
+              onClick={signOut}
+              className="shrink-0 text-xs font-semibold px-2.5 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            >
+              Logout
+            </button>
+          </>
         ) : (
-          <Link
-            href="/orders"
-            className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-800 hover:bg-slate-200"
-          >
-            My Orders
-          </Link>
+          <>
+            <Link
+              href="/login"
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            >
+              Login
+            </Link>
+            <Link
+              href="/orders"
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-800 hover:bg-slate-200"
+            >
+              My Orders
+            </Link>
+          </>
         )}
       </div>
 

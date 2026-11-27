@@ -4,20 +4,21 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { useCart } from "@/context/cart-context"
 import { useOrders } from "@/context/order-context"
+import { useAuth } from "@/context/auth-context"
 import { findStore } from "@/data/mockData"
 import type { CartItem } from "@/data/mockData"
 
 export function CheckoutDrawer({ onClose, isOpen }: { onClose: () => void; isOpen: boolean }) {
   const router = useRouter()
   const { clear, items, count, total, activeStoreId } = useCart()
-  const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
-  const [address, setAddress] = useState("RR Nagar, Bengaluru")
+  const { placeOrder } = useOrders()
+  const { user, profile } = useAuth()
+  const [name, setName] = useState(profile?.full_name ?? "")
+  const [phone, setPhone] = useState(profile?.phone ?? "")
+  const [address, setAddress] = useState(profile?.address ?? "RR Nagar, Bengaluru")
   const [paymentMode, setPaymentMode] = useState<"upi" | "cod">("upi")
   const [submitting, setSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-
-  const { placeOrder } = useOrders()
   const formattedPhone = phone.replace(/\D/g, "").slice(0, 10)
 
   const upiLabelClassName = "flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-1.5 bg-indigo-50 cursor-pointer "
@@ -38,6 +39,7 @@ export function CheckoutDrawer({ onClose, isOpen }: { onClose: () => void; isOpe
       total,
       status: "received",
       createdAt: new Date().toISOString(),
+      userId: user?.id ?? undefined,
     }
     clear()
     router.push("/")

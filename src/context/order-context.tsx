@@ -27,6 +27,8 @@ interface OrderRow {
   delivery_fee: number
   status: OrderStatus
   created_at: string
+  // The auth user who placed the order (null for guest orders).
+  user_id?: string
 }
 
 const toOrder = (row: OrderRow): Order => ({
@@ -41,6 +43,7 @@ const toOrder = (row: OrderRow): Order => ({
   total: row.total,
   status: row.status,
   createdAt: row.created_at,
+  userId: row.user_id,
 })
 
 const toOrderRow = (order: Order): OrderRow => ({
@@ -56,6 +59,8 @@ const toOrderRow = (order: Order): OrderRow => ({
   total: order.total,
   status: order.status,
   created_at: order.createdAt,
+  // Guest orders (placed while logged out) omit user_id (stored as NULL).
+  user_id: order.userId,
   // The orders table keeps a delivery_fee column that the client Order type
   // does not expose; default to 0 on insert.
   delivery_fee: 0,

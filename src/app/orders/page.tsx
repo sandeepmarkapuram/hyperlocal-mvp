@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { useOrders } from '@/context/order-context'
+import { useAuth } from '@/context/auth-context'
 import { NavBar } from '@/components/nav-bar'
 import { Order, OrderStatus } from '@/data/mockData'
 
@@ -146,14 +147,32 @@ function EmptyState() {
   )
 }
 
+function LoginPrompt() {
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 text-center">
+      <p className="text-lg font-medium text-slate-900 mb-2">
+        Log in to see your orders
+      </p>
+      <p className="text-sm text-slate-500 mb-4">
+        Place orders while signed in to view your order history here.
+      </p>
+      <Link href="/login" className="text-sm font-semibold text-[#0C831F] hover:underline">
+        Go to Login
+      </Link>
+    </div>
+  )
+}
+
 export default function OrdersPage() {
   const { orders, updateOrderStatus } = useOrders()
+  const { user } = useAuth()
+  const visibleOrders = user ? orders.filter((order) => order.userId === user.id) : []
   const sortedOrders = useMemo(
     () =>
-      [...orders].sort(
+      [...visibleOrders].sort(
         (a, b) => b.createdAt.localeCompare(a.createdAt)
       ),
-    [orders]
+    [visibleOrders]
   )
 
   return (
@@ -167,7 +186,9 @@ export default function OrdersPage() {
           </Link>
         </div>
 
-        {sortedOrders.length === 0 ? (
+        {!user ? (
+          <LoginPrompt />
+        ) : sortedOrders.length === 0 ? (
           <EmptyState />
         ) : (
           <div className="space-y-3">
