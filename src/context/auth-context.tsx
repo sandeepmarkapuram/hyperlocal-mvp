@@ -16,6 +16,11 @@ interface AuthContextValue {
   profile: Profile | null
   loading: boolean
   refreshProfile: () => Promise<void>
+  updateProfile: (input: {
+    fullName: string
+    phone: string
+    address: string
+  }) => Promise<void>
   signUp: (input: {
     email: string
     password: string
@@ -104,6 +109,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       await fetchProfile(user)
     }
+  }
+
+  // Update the logged-in user's profile across the profiles table, auth user
+  // metadata, and localStorage, then reflect it in context immediately so the
+  // NavBar (and any other consumer) updates live without a page reload.
+  const updateProfile = async ({
+    fullName,
+    phone,
+    address,
+  }: {
+    fullName: string
+    phone: string
+    address: string
+  }) => {
+    if (!user) {
+      throw new Error('Not logged in')
+    }
+
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .upsert({ id: user.id, full_name: fullName, phone, address })
+    if (upsertError) {
+      throw new Error(upsertError.message)
+    }
+
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { full_name: fullName, phone, address },
+    })
+    if (authError) {
+      throw new Error(authError.message)
+    }
+
+    localStorage.setItem(
+      'hyperlocal_customer_info',
+      JSON.stringify({ name: fullName, phone, address }),
+    )
+
+    setProfile({ id: user.id, full_name: fullName, phone, address })
   }
 
   // Resolve the initial session and load the matching profile row.
@@ -212,7 +255,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, loading, refreshProfile, signUp, signIn, signOut }}
+      value={{
+        user,
+        profile,
+        loading,
+        refreshProfile,
+        updateProfile,
+        signUp,
+        signIn,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>

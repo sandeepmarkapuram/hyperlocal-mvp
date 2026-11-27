@@ -31,9 +31,12 @@ export function NavBar() {
           </Link>
         ) : user ? (
           <>
-            <span className="shrink-0 text-xs font-medium text-slate-500 truncate max-w-[140px]">
+            <Link
+              href="/profile"
+              className="shrink-0 text-xs font-medium text-slate-500 truncate max-w-[140px] hover:text-[#0C831F] active:text-[#096b19] transition-colors"
+            >
               {fullName ? `Hi, ${fullName}` : 'Account'}
-            </span>
+            </Link>
             <Link
               href="/orders"
               className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-800 hover:bg-slate-200"
